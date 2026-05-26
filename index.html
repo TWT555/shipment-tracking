@@ -63,22 +63,22 @@
     .calendar {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
-      gap: 10px;
+      gap: 0;
       margin-top: 20px;
     }
 
     .day-header {
-      background: #e5e7eb;
+      background: #d1d5db;
       padding: 10px;
       text-align: center;
-      border-radius: 10px;
+      font-weight: bold;
+      border: 1px solid #cbd5e1;
       font-weight: bold;
     }
 
     .day {
       background: white;
-      border: 1px solid #ddd;
-      border-radius: 12px;
+      border: 1px solid #d1d5db;
       min-height: 180px;
       padding: 8px;
     }
@@ -89,16 +89,19 @@
     }
 
     .shipment {
-      border-radius: 10px;
-      padding: 6px 8px;
-      margin-bottom: 6px;
+      padding: 4px 8px;
+      margin-bottom: 4px;
       font-size: 11px;
-      line-height: 1.4;
       color: white;
       cursor: pointer;
       position: relative;
-      overflow: visible;
       transition: transform 0.2s;
+      border-radius: 0;
+      margin-left: -8px;
+      margin-right: -8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .shipment:hover {
@@ -134,7 +137,7 @@
     }
 
     .sea {
-      background: #059669;
+      background: #0f766e;
     }
 
     .truck {
@@ -233,6 +236,7 @@
           <th>Flight No.</th>
           <th>Vessel No.</th>
           <th>AWB / BL</th>
+          <th>Action</th>
         </tr>
       </thead>
 
@@ -261,12 +265,14 @@
       <input type="text" id="vesselNo" placeholder="Vessel No.">
       <input type="text" id="awb" placeholder="AWB / BL">
 
-      <button onclick="addShipment()">Save Shipment</button>
+      <button onclick="saveShipment()">Save Shipment</button>
       <button onclick="closeModal()">Close</button>
     </div>
   </div>
 
   <script>
+    let editIndex = -1;
+
     let shipments = JSON.parse(localStorage.getItem('shipments')) || [
       {
         startDate: 15,
@@ -378,8 +384,16 @@
 
           div.className = `shipment ${classType}`;
 
+          const isStart = d == s.startDate;
+          const isEnd = d == s.endDate;
+
+          div.style.borderTopLeftRadius = isStart ? '8px' : '0';
+          div.style.borderBottomLeftRadius = isStart ? '8px' : '0';
+          div.style.borderTopRightRadius = isEnd ? '8px' : '0';
+          div.style.borderBottomRightRadius = isEnd ? '8px' : '0';
+
           div.innerHTML = `
-            <strong>${s.vendor}</strong>
+            ${isStart ? `<strong>${s.vendor}</strong>` : '&nbsp;'}
 
             <div class="tooltip">
               <strong>${s.vendor}</strong><br><br>
@@ -398,7 +412,9 @@
         calendar.appendChild(dayBox);
       }
 
-      filtered.forEach(s => {
+      filtered.forEach((s, index) => {
+        const realIndex = shipments.indexOf(s);
+
         const row = document.createElement('tr');
 
         row.innerHTML = `
@@ -409,6 +425,12 @@
           <td>${s.flightNo}</td>
           <td>${s.vesselNo}</td>
           <td>${s.awb}</td>
+          <td>
+            <button onclick="editShipment(${realIndex})">Edit</button>
+            <button onclick="deleteShipment(${realIndex})" style="background:#dc2626;margin-left:5px;">
+              Delete
+            </button>
+          </td>
         `;
 
         table.appendChild(row);
@@ -423,7 +445,7 @@
       document.getElementById('shipmentModal').style.display = 'none';
     }
 
-    function addShipment() {
+    function saveShipment() {
       const shipment = {
         startDate: parseInt(document.getElementById('startDate').value),
         endDate: parseInt(document.getElementById('endDate').value),
@@ -436,10 +458,53 @@
         awb: document.getElementById('awb').value
       };
 
-      shipments.push(shipment);
+      if (editIndex === -1) {
+        shipments.push(shipment);
+      } else {
+        shipments[editIndex] = shipment;
+        editIndex = -1;
+      }
+
       saveData();
       renderCalendar();
       closeModal();
+      clearForm();
+    }
+
+    function editShipment(index) {
+      const s = shipments[index];
+
+      document.getElementById('startDate').value = s.startDate;
+      document.getElementById('endDate').value = s.endDate;
+      document.getElementById('type').value = s.type;
+      document.getElementById('vendor').value = s.vendor;
+      document.getElementById('etd').value = s.etd;
+      document.getElementById('eta').value = s.eta;
+      document.getElementById('flightNo').value = s.flightNo;
+      document.getElementById('vesselNo').value = s.vesselNo;
+      document.getElementById('awb').value = s.awb;
+
+      editIndex = index;
+      openModal();
+    }
+
+    function deleteShipment(index) {
+      if (confirm('Delete this shipment?')) {
+        shipments.splice(index, 1);
+        saveData();
+        renderCalendar();
+      }
+    }
+
+    function clearForm() {
+      document.getElementById('startDate').value = '';
+      document.getElementById('endDate').value = '';
+      document.getElementById('vendor').value = '';
+      document.getElementById('etd').value = '';
+      document.getElementById('eta').value = '';
+      document.getElementById('flightNo').value = '';
+      document.getElementById('vesselNo').value = '';
+      document.getElementById('awb').value = '';
     }
 
     document.getElementById('searchBox').addEventListener('input', renderCalendar);
