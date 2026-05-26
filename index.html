@@ -90,15 +90,59 @@
 
     .shipment {
       border-radius: 10px;
-      padding: 8px;
-      margin-bottom: 8px;
+      padding: 6px 8px;
+      margin-bottom: 6px;
+      font-size: 11px;
+      line-height: 1.4;
+      color: white;
+      cursor: pointer;
+      position: relative;
+      overflow: visible;
+      transition: transform 0.2s;
+    }
+
+    .shipment:hover {
+      transform: scale(1.02);
+      z-index: 10;
+    }
+
+    .tooltip {
+      visibility: hidden;
+      opacity: 0;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 260px;
+      background: #111827;
+      color: white;
+      padding: 12px;
+      border-radius: 12px;
       font-size: 12px;
-      line-height: 1.5;
+      line-height: 1.6;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+      transition: opacity 0.2s;
+      z-index: 999;
+    }
+
+    .shipment:hover .tooltip {
+      visibility: visible;
+      opacity: 1;
     }
 
     .air {
-      background: #dbeafe;
-      border: 1px solid #93c5fd;
+      background: #2563eb;
+    }
+
+    .sea {
+      background: #059669;
+    }
+
+    .truck {
+      background: #d97706;
+    }
+
+    .courier {
+      background: #7c3aed;
     }
 
     .sea {
@@ -172,6 +216,8 @@
         <option value="All">All Shipment</option>
         <option value="Air">Air</option>
         <option value="Sea">Sea</option>
+        <option value="Truck">Truck</option>
+        <option value="Courier">Courier</option>
       </select>
     </div>
 
@@ -180,6 +226,7 @@
     <table>
       <thead>
         <tr>
+          <th>Type</th>
           <th>Vendor</th>
           <th>ETD</th>
           <th>ETA</th>
@@ -197,11 +244,14 @@
     <div class="modal-content">
       <h2>Add Shipment</h2>
 
-      <input type="number" id="date" placeholder="Date (1-31)">
+      <input type="number" id="startDate" placeholder="ETD Date (1-31)">
+      <input type="number" id="endDate" placeholder="ETA Date (1-31)">
 
       <select id="type">
         <option value="Air">Air</option>
         <option value="Sea">Sea</option>
+        <option value="Truck">Truck</option>
+        <option value="Courier">Courier</option>
       </select>
 
       <input type="text" id="vendor" placeholder="Vendor / Customer">
@@ -219,7 +269,8 @@
   <script>
     let shipments = JSON.parse(localStorage.getItem('shipments')) || [
       {
-        date: 15,
+        startDate: 15,
+        endDate: 20,
         type: 'Air',
         vendor: 'ABC Supplier',
         etd: '15-May-2026',
@@ -229,7 +280,8 @@
         awb: 'AWB12345'
       },
       {
-        date: 17,
+        startDate: 17,
+        endDate: 25,
         type: 'Sea',
         vendor: 'XYZ Customer',
         etd: '17-May-2026',
@@ -237,6 +289,28 @@
         flightNo: '-',
         vesselNo: 'VSL009',
         awb: 'BL77889'
+      },
+      {
+        startDate: 10,
+        endDate: 12,
+        type: 'Truck',
+        vendor: 'Fast Trucking',
+        etd: '10-May-2026',
+        eta: '12-May-2026',
+        flightNo: '-',
+        vesselNo: '-',
+        awb: 'TRK99881'
+      },
+      {
+        startDate: 22,
+        endDate: 23,
+        type: 'Courier',
+        vendor: 'DHL Express',
+        etd: '22-May-2026',
+        eta: '23-May-2026',
+        flightNo: '-',
+        vesselNo: '-',
+        awb: 'DHL778899'
       }
     ];
 
@@ -292,21 +366,30 @@
 
         dayBox.appendChild(date);
 
-        const dailyShipments = filtered.filter(s => s.date == d);
+        const dailyShipments = filtered.filter(s => d >= s.startDate && d <= s.endDate);
 
         dailyShipments.forEach(s => {
           const div = document.createElement('div');
-          div.className = s.type === 'Air'
-            ? 'shipment air'
-            : 'shipment sea';
+
+          let classType = 'air';
+          if (s.type === 'Sea') classType = 'sea';
+          if (s.type === 'Truck') classType = 'truck';
+          if (s.type === 'Courier') classType = 'courier';
+
+          div.className = `shipment ${classType}`;
 
           div.innerHTML = `
-            <strong>${s.type === 'Air' ? '✈' : '🚢'} ${s.vendor}</strong><br>
-            ETD: ${s.etd}<br>
-            ETA: ${s.eta}<br>
-            ${s.flightNo !== '-' ? `Flight: ${s.flightNo}<br>` : ''}
-            ${s.vesselNo !== '-' ? `Vessel: ${s.vesselNo}<br>` : ''}
-            AWB/BL: ${s.awb}
+            <strong>${s.vendor}</strong>
+
+            <div class="tooltip">
+              <strong>${s.vendor}</strong><br><br>
+              Type: ${s.type}<br>
+              ETD: ${s.etd}<br>
+              ETA: ${s.eta}<br>
+              ${s.flightNo !== '-' ? `Flight No: ${s.flightNo}<br>` : ''}
+              ${s.vesselNo !== '-' ? `Vessel No: ${s.vesselNo}<br>` : ''}
+              AWB/BL: ${s.awb}
+            </div>
           `;
 
           dayBox.appendChild(div);
@@ -319,6 +402,7 @@
         const row = document.createElement('tr');
 
         row.innerHTML = `
+          <td>${s.type}</td>
           <td>${s.vendor}</td>
           <td>${s.etd}</td>
           <td>${s.eta}</td>
@@ -341,7 +425,8 @@
 
     function addShipment() {
       const shipment = {
-        date: document.getElementById('date').value,
+        startDate: parseInt(document.getElementById('startDate').value),
+        endDate: parseInt(document.getElementById('endDate').value),
         type: document.getElementById('type').value,
         vendor: document.getElementById('vendor').value,
         etd: document.getElementById('etd').value,
@@ -372,7 +457,8 @@
 
         json.forEach(row => {
           shipments.push({
-            date: row.Date,
+            startDate: row.StartDate,
+            endDate: row.EndDate,
             type: row.Type,
             vendor: row.Vendor,
             etd: row.ETD,
